@@ -5,10 +5,6 @@ from dotenv import load_dotenv
 import argparse
 from typing import Callable
 
-"""
-
-"""
-
 
 class Model(Enum):
     GPT3_5 = "gpt-3.5-turbo-1106"
