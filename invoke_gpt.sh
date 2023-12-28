@@ -5,7 +5,7 @@ function fail {
     exit "${2-1}" ## Return a code specified by $2, or 1 by default.
 }
 
-GPT_APP_PATH=$(pwd)
+GPT_APP_PATH=$1
 
 # Safeguard against no venv setup
 if [ ! -f "$GPT_APP_PATH/venv/bin/activate" ]; then

@@ -31,35 +31,8 @@ Model: gpt-4-1106-preview | Token usage: 27 | Cost: 0.0011 USD
 
 ## Prerequisites
 
--   Python 3.11 or higher (needed to create a virtual environment)
+-   Python 3.9 or higher (needed to create a virtual environment)
 -   Python Pip
-
-## Configuration
-
-Follow these steps to set up the GPT CLI on your system:
-
-### Set up the install script.
-
--   In `install_scripts/install.sh`, change the below parameters to match your system. By default `SOURCE_CONFIG_FILE_PATH` is `~`, and `CONFIG_FILENAME` is `.zshrc`.
-
-```bash
-SOURCE_CONFIG_FILE_PATH="~"
-CONFIG_FILENAME=".zshrc"
-```
-
--   If you are on Windows, you may have `python` mapped to `python3`, in which case you might have to change this line
-
-```
-    python3 -m venv $VENV_DIR/venv
-```
-
-to this
-
-```
-    python -m venv $VENV_DIR/venv
-```
-
-After configuring `install.sh`, save the file and proceed.
 
 ## Installation
 
@@ -80,4 +53,6 @@ prompt() {
 }
 ```
 
-Change this function name (`prompt`) to whatever you'd like. Don't forget to re-`source` your `.zshrc` or `.bashrc`.
+Change this function name (`prompt`) to whatever you'd like.
+
+Lastly, re-`source` your `.zshrc` or `.bashrc` to activate the invocation alias
