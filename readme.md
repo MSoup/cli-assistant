@@ -38,7 +38,8 @@ Model: gpt-4-1106-preview | Token usage: 27 | Cost: 0.0011 USD
 
 ```bash
 cd install_scripts
-sh install.sh
+chmod +x install.sh
+. ./install.sh .bashrc (or .zshrc)
 ```
 
 ## Changing the invocation alias
