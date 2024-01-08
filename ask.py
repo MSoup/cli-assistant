@@ -1,77 +1,135 @@
+import json
 import os
 from openai import OpenAI
 from enum import Enum
 from dotenv import load_dotenv
 import argparse
 from typing import Callable
+from abc import ABC, abstractmethod
+import boto3
 
 
-class Model(Enum):
-    GPT3_5 = "gpt-3.5-turbo-1106"
-    GPT4 = "gpt-4-1106-preview"
+class Model(ABC):
+    @property
+    @abstractmethod
+    def model(self):
+        """
+        Model name
+        """
+        raise NotImplementedError
 
-    @classmethod
-    def get_model_by_version(cls, version):
-        if version == "3.5":
-            return cls.GPT3_5
-        elif version == "4":
-            return cls.GPT4
-        else:
-            raise ValueError("Invalid version")
+    @abstractmethod
+    def invoke(self, prompt: str):
+        """
+        Implement invoke method
+        """
+        raise NotImplementedError
 
-
-# WRAPPER
-def token_usage(func: Callable) -> Callable:
-    """
-    Decorates a function that returns a completion object
-    """
-    COST_FOR_1000_TOKENS = {Model.GPT3_5.value: 0.003, Model.GPT4.value: 0.04}
-
-    def wrapper(*args, **kwargs):
-        completion_object = func(*args, **kwargs)
-        try:
-            model = completion_object.model
-            token_usage = completion_object.usage.total_tokens
-            # cost is tokens used * cost per token. We know cost per 1000, so we divide the cost for 1000 tokens by 1000
-            cost_per_token = COST_FOR_1000_TOKENS[model] / 1000
-            actual_cost = round(token_usage * cost_per_token, 4)
-            print("==================================")
-            print(
-                f"Model: {model} | Token usage: {token_usage} | Cost: {actual_cost} USD"
-            )
-        except AttributeError:
-            print("The decorated function must return a completion object")
-        return completion_object
-
-    return wrapper
+    # TODO
+    # @abstractmethod
+    # def cost(self, cost_per_1000_tokens: float):
+    #     """
+    #     Implement method to calculate cost of invocation
+    #     """
 
 
-@token_usage
-def get_response(selected_model: Model = Model.GPT3_5, prompt: str = ""):
-    if not prompt:
-        raise ValueError("Prompt required")
+# Requires valid OPENAI_API_KEY environment variable
+class GPT(Model):
+    VERSIONS = {"3.5": "gpt-3.5-turbo-1106", "4": "gpt-4-1106-preview"}
 
-    completion = client.chat.completions.create(
-        model=selected_model.value,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful assistant.",
-            },
-            {"role": "user", "content": prompt},
-        ],
-    )
+    def __init__(self, model_ver) -> None:
+        if not model_ver in self.VERSIONS:
+            raise ValueError("Allowed GPT versions: 3.5, 4")
 
-    response = completion.choices[0].message.content
+        self.API_KEY = os.environ.get("OPENAI_API_KEY")
+        self.model_ver = model_ver
+        self.client = OpenAI(api_key=self.API_KEY)
 
-    print(response)
+        super().__init__()
 
-    return completion
+    def model(self):
+        return self.model_ver
+
+    def invoke(self, prompt) -> None:
+        if not self.API_KEY:
+            raise ValueError("Please initialize OPENAI_API_KEY env variable")
+
+        completion = self.client.chat.completions.create(
+            model=self.VERSIONS[self.model_ver],
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+        )
+
+        response = completion.choices[0].message.content
+
+        print(response)
+
+
+# Requires valid ~/.aws/credentials
+class Claude(Model):
+    VERSIONS = {"2.1": "anthropic.claude-v2:1"}
+
+    def __init__(self, model_ver) -> None:
+        if not model_ver in self.VERSIONS:
+            raise ValueError("Allowed Claude versions: 2.1")
+
+        self.API_KEY = os.environ.get("CLAUDE_API_KEY")
+        self.model_ver = model_ver
+
+        self.client = boto3.client("bedrock-runtime", region_name="us-east-1")
+
+        super().__init__()
+
+    def model(self):
+        return self.model_ver
+
+    def invoke(self, prompt):
+        """
+        Invokes the Anthropic Claude 2 model to run an inference using the input
+        provided in the request body.
+
+        :param prompt: The prompt that you want Claude to complete.
+        :return: Inference response from the model.
+        """
+
+        # Claude requires you to enclose the prompt as follows:
+        enclosed_prompt = "Human: " + prompt + "\n\nAssistant:"
+
+        body = {
+            "prompt": enclosed_prompt,
+            "max_tokens_to_sample": 2000,
+            "temperature": 0.5,
+            "stop_sequences": ["\n\nHuman:"],
+        }
+
+        response = self.client.invoke_model(
+            modelId=self.VERSIONS[self.model_ver], body=json.dumps(body)
+        )
+
+        response_body = json.loads(response.get("body").read())
+        completion = response_body["completion"]
+
+        print(completion.strip())
+        return completion
+
+
+class Service:
+    def __init__(self, client: Model):
+        self.client = client
+
+    def get_response(self, prompt):
+        print("Service get response")
+        pass
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Sends a prompt to openai API, returns a GPT3.5 or GPT4 completion response"
+        description="Sends a prompt to openai API or Claude, returns a GPT3.5, GPT4 or Claude 2.1 completion response"
     )
 
     parser.add_argument(
@@ -79,21 +137,15 @@ if __name__ == "__main__":
         "--version",
         type=str,
         default="3.5",
-        help="Model version (3.5 or 4)'",
+        help="Model version (3.5, 4, or claude)'",
     )
     parser.add_argument("prompt_text", type=str, help="Prompt for the model")
 
     args = parser.parse_args()
-
     load_dotenv()
-    API_KEY = os.environ.get("OPENAI_API_KEY")
 
-    if not API_KEY:
-        raise ValueError("Please initialize OPENAI_API_KEY env variable")
-
-    client = OpenAI(api_key=API_KEY)
-
-    selected_model = Model.get_model_by_version(args.version)
-    prompt = args.prompt_text
-
-    get_response(selected_model, prompt)
+    if args.version.lower() in ["3.5", "4"]:
+        client = GPT(model_ver=args.version.lower())
+    else:
+        client = Claude(model_ver="2.1")
+    client.invoke(prompt=args.prompt_text)
