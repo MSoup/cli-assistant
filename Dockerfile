@@ -5,8 +5,8 @@ RUN apt-get update -y && \
 
 WORKDIR /
 
-COPY install_scripts/* gpt-cli/install_scripts/
-COPY ask.py invoke_gpt.sh requirements.txt gpt-cli/
+COPY src/* install_scripts/* gpt-cli/install_scripts/
+COPY invoke_gpt.sh requirements.txt gpt-cli/
 
 RUN chmod +x gpt-cli/install_scripts/install.sh && \
     chmod +x gpt-cli/invoke_gpt.sh && \

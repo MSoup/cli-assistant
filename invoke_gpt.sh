@@ -14,6 +14,6 @@ fi
 
 prompt() {
     source $GPT_APP_PATH/venv/bin/activate
-    python3 $GPT_APP_PATH/ask.py "$@"
+    python3 $GPT_APP_PATH/src/app.py "$@"
     deactivate
 }

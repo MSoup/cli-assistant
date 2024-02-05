@@ -39,7 +39,7 @@ Model: gpt-4-1106-preview | Token usage: 27 | Cost: 0.0011 USD
 ```bash
 cd install_scripts
 chmod +x install.sh
-. ./install.sh .bashrc (or .zshrc)
+source ./install.sh .bashrc (or .zshrc)
 ```
 
 ## Changing the invocation alias
@@ -49,7 +49,7 @@ To change the alias, go to `invoke_gpt.sh` and locate the function:
 ```bash
 prompt() {
     source $GPT_APP_PATH/venv/bin/activate
-    python3 $GPT_APP_PATH/ask.py "$@"
+    python3 $GPT_APP_PATH/src/app.py "$@"
     deactivate
 }
 ```

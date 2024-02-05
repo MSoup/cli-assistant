@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Creates venv if it doesn't exist in the directory where ask.py resides
+# Creates venv if it doesn't exist in the directory where src folder resides
 # also installs dependencies if venv is not found, 
 # if venv exists, nothing happens.
 
