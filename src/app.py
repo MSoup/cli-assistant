@@ -9,30 +9,19 @@ import boto3
 
 class Model(ABC):
     """
-    Abstract class. Models must implement the below
+    Abstract class. Models must implement
     :abstractmethod: model()
     :abstractmethod: invoke()
     :abstractmethod: add_to_factory()
     """
 
-    def __init__(self, model_ver: str):
-        self.__model_ver = model_ver
-
-    @property
-    @abstractmethod
-    def model(self):
-        """
-        Human readable model name
-        """
-        return self.__model_ver
+    def __init__(self, version: str):
+        self.__model_ver = version
 
     @property
     @abstractmethod
     def modelId(self):
-        """
-        Model identifier
-        """
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def invoke(self, prompt: str):
@@ -112,18 +101,14 @@ class GPT(Model):
 
         super().__init__(self.model_ver)
 
-    @property
-    def model(self):
-        return f"GPT-{self.model_ver}"
-
-    @property
-    def modelId(self):
-        return f"{self.VERSIONS[self.model_ver]}"
-
     @classmethod
     def add_to_factory(self):
         for k, v in self.VERSIONS.items():
             ServiceFactory.AVAILABLE_MODELS[k] = ModelVersion(GPT, v)
+
+    @property
+    def modelId(self):
+        return self.VERSIONS[self.model_ver]
 
     def invoke(self, prompt) -> None:
         if not self.api_key:
@@ -145,16 +130,14 @@ class GPT(Model):
 
 
 # https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids-arns.html
-class Claude(Model):
-    VERSIONS = {"claude": "anthropic.claude-v2:1"}
+class Claude2(Model):
+    VERSIONS = {
+        "claude2.1": "anthropic.claude-v2:1",
+    }
 
     def __init__(self, version: str) -> None:
         self.version = version
         self.client = boto3.client("bedrock-runtime", region_name="us-east-1")
-
-    @property
-    def model(self):
-        return self.version
 
     @property
     def modelId(self):
@@ -163,11 +146,11 @@ class Claude(Model):
     @classmethod
     def add_to_factory(self):
         for k, v in self.VERSIONS.items():
-            ServiceFactory.AVAILABLE_MODELS[k] = ModelVersion(Claude, v)
+            ServiceFactory.AVAILABLE_MODELS[k] = ModelVersion(Claude2, v)
 
     def invoke(self, prompt):
         """
-        Invokes the Anthropic Claude 2 model to run an inference using the input
+        Invokes the Anthropic Claude model to run an inference using the input
         provided in the request body.
         :param prompt: The prompt that you want Claude to complete.
         :return: Inference response from the model.
@@ -184,6 +167,51 @@ class Claude(Model):
         response_body = json.loads(response["body"].read())
         completion = response_body["completion"]
         return completion.strip()
+
+
+class Claude3(Model):
+    VERSIONS = {
+        "claude3-sonnet": "anthropic.claude-3-sonnet-20240229-v1:0",
+    }
+
+    def __init__(self, version: str) -> None:
+        self.version = version
+        self.client = boto3.client("bedrock-runtime", region_name="us-east-1")
+
+    @property
+    def model(self):
+        return self.version
+
+    @property
+    def modelId(self):
+        return self.VERSIONS[self.version]
+
+    @classmethod
+    def add_to_factory(self):
+        for k, v in self.VERSIONS.items():
+            ServiceFactory.AVAILABLE_MODELS[k] = ModelVersion(Claude3, v)
+
+    def invoke(self, prompt):
+        """
+        Invokes the Anthropic Claude 3 model to run an inference using the input
+        provided in the request body.
+        :param prompt: The prompt that you want Claude to complete.
+        :return: Inference response from the model.
+        """
+        # Claude requires you to enclose the prompt as follows:
+        enclosed_prompt = "Human: " + prompt + "\n\nAssistant:"
+
+        body = {
+            "max_tokens": 2048,
+            "system": "You are a helpful software engineer",
+            "messages": [{"role": "user", "content": prompt}],
+            "anthropic_version": "bedrock-2023-05-31",
+        }
+
+        response = self.client.invoke_model(modelId=self.modelId, body=json.dumps(body))
+        response_body = json.loads(response["body"].read())
+        completion = response_body
+        return completion["content"][0]["text"]
 
 
 # WRAPPER
@@ -214,7 +242,8 @@ class Claude(Model):
 if __name__ == "__main__":
     # Init invokable models
     GPT.add_to_factory()
-    Claude.add_to_factory()
+    Claude2.add_to_factory()
+    Claude3.add_to_factory()
 
     # Init env variables
     load_dotenv()
@@ -230,9 +259,9 @@ if __name__ == "__main__":
         "-v",
         "--version",
         type=str,
-        default="claude",
-        help="Model version (3.5, 4, or claude)'",
-        choices=["3.5", "4", "claude"],
+        default="claude3-sonnet",
+        help="Model version (3.5, 4, 'claude2.1', 'claude3-sonnet')'",
+        choices=["3.5", "4", "claude2.1", "claude3-sonnet"],
     )
     parser.add_argument("prompt_text", type=str, help="Prompt for the model")
 
