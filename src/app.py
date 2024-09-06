@@ -16,7 +16,7 @@ class Model(ABC):
     """
 
     def __init__(self, version: str):
-        self.__model_ver = version
+        return
 
     @property
     @abstractmethod
@@ -30,8 +30,8 @@ class Model(ABC):
         """
         raise NotImplementedError
 
-    @classmethod
     @abstractmethod
+    @staticmethod
     def add_to_factory():
         """
         Implement add_to_factory method
@@ -63,6 +63,7 @@ class ServiceFactory:
     def __init__(self, model_name: str) -> None:
         self.client = self._get_client(model_name.lower())
 
+    @staticmethod
     def get_available_models():
         return f"""Available Models:
         {list(ServiceFactory.AVAILABLE_MODELS.keys())}
@@ -92,7 +93,7 @@ class GPT(Model):
     VERSIONS = {"3.5": "gpt-3.5-turbo-1106", "4": "gpt-4-1106-preview"}
 
     def __init__(self, model_ver) -> None:
-        if not model_ver in self.VERSIONS:
+        if model_ver not in self.VERSIONS:
             raise ValueError("Allowed versions:", list(self.VERSIONS.items()))
 
         self.model_ver = model_ver
@@ -101,7 +102,6 @@ class GPT(Model):
 
         super().__init__(self.model_ver)
 
-    @classmethod
     def add_to_factory(self):
         for k, v in self.VERSIONS.items():
             ServiceFactory.AVAILABLE_MODELS[k] = ModelVersion(GPT, v)
@@ -129,49 +129,9 @@ class GPT(Model):
         return response
 
 
-# https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids-arns.html
-class Claude2(Model):
-    VERSIONS = {
-        "claude2.1": "anthropic.claude-v2:1",
-    }
-
-    def __init__(self, version: str) -> None:
-        self.version = version
-        self.client = boto3.client("bedrock-runtime", region_name="us-east-1")
-
-    @property
-    def modelId(self):
-        return self.VERSIONS[self.version]
-
-    @classmethod
-    def add_to_factory(self):
-        for k, v in self.VERSIONS.items():
-            ServiceFactory.AVAILABLE_MODELS[k] = ModelVersion(Claude2, v)
-
-    def invoke(self, prompt):
-        """
-        Invokes the Anthropic Claude model to run an inference using the input
-        provided in the request body.
-        :param prompt: The prompt that you want Claude to complete.
-        :return: Inference response from the model.
-        """
-        # Claude requires you to enclose the prompt as follows:
-        enclosed_prompt = "Human: " + prompt + "\n\nAssistant:"
-        body = {
-            "prompt": enclosed_prompt,
-            "max_tokens_to_sample": 2000,
-            "temperature": 0.1,
-            "stop_sequences": ["\n\nHuman:"],
-        }
-        response = self.client.invoke_model(modelId=self.modelId, body=json.dumps(body))
-        response_body = json.loads(response["body"].read())
-        completion = response_body["completion"]
-        return completion.strip()
-
-
 class Claude3(Model):
     VERSIONS = {
-        "claude3-sonnet": "anthropic.claude-3-sonnet-20240229-v1:0",
+        "claude3_5-sonnet": "anthropic.claude-3-5-sonnet-20240620-v1:0",
     }
 
     def __init__(self, version: str) -> None:
@@ -186,7 +146,6 @@ class Claude3(Model):
     def modelId(self):
         return self.VERSIONS[self.version]
 
-    @classmethod
     def add_to_factory(self):
         for k, v in self.VERSIONS.items():
             ServiceFactory.AVAILABLE_MODELS[k] = ModelVersion(Claude3, v)
@@ -198,8 +157,6 @@ class Claude3(Model):
         :param prompt: The prompt that you want Claude to complete.
         :return: Inference response from the model.
         """
-        # Claude requires you to enclose the prompt as follows:
-        enclosed_prompt = "Human: " + prompt + "\n\nAssistant:"
 
         body = {
             "max_tokens": 2048,
@@ -242,7 +199,6 @@ class Claude3(Model):
 if __name__ == "__main__":
     # Init invokable models
     GPT.add_to_factory()
-    Claude2.add_to_factory()
     Claude3.add_to_factory()
 
     # Init env variables
@@ -259,9 +215,9 @@ if __name__ == "__main__":
         "-v",
         "--version",
         type=str,
-        default="claude3-sonnet",
-        help="Model version (3.5, 4, 'claude2.1', 'claude3-sonnet')'",
-        choices=["3.5", "4", "claude2.1", "claude3-sonnet"],
+        default="claude3_5-sonnet",
+        help="Model version (3.5, 4, 'claude2.1', 'claude3_5-sonnet')'",
+        choices=["3.5", "4", "claude2.1", "claude3_5-sonnet"],
     )
     parser.add_argument("prompt_text", type=str, help="Prompt for the model")
 

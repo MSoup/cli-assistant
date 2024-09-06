@@ -1,15 +1,15 @@
 # GPT CLI
 
-This command-line interface (CLI) tool enables the use of OpenAI's GPT models directly from your terminal. It is designed to be cost-effective by utilizing the latest "turbo" versions of the GPT models, including GPT 3.5 turbo and GPT 4 turbo, as of December 2023.
+This command-line interface (CLI) tool enables the use of LLM models directly from your terminal. It is designed to be cost-effective by utilizing the latest "turbo" versions of the GPT models, including GPT 4 turbo, and Anthropic Claude as well.
 
 Edit Dec 2023: I made a terrible mistake; the original way to invoke this cli tool was `gpt <prompt>`, but it never occured to me that `gpt` is an existing tool--[GUID partition table maintenance utulity](https://www.unix.com/man-page/OSX/8/gpt/). Silly me.
 
 ## Table of Contents
 
--   [Usage](#usage)
--   [Prerequisites](#prerequisites)
--   [Configuration](#configuration)
--   [Installation](#installation)
+- [Usage](#usage)
+- [Prerequisites](#prerequisites)
+- [Configuration](#configuration)
+- [Installation](#installation)
 
 ## Usage
 
@@ -31,8 +31,8 @@ Model: gpt-4-1106-preview | Token usage: 27 | Cost: 0.0011 USD
 
 ## Prerequisites
 
--   Python 3.9 or higher (needed to create a virtual environment)
--   Python Pip
+- Python 3.9 or higher (needed to create a virtual environment)
+- Python Pip
 
 ## Installation
 
